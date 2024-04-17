@@ -1,0 +1,147 @@
+PART 2:
+
+1. install filebeat and logstash:
+
+apt-get install logstash=1:8.13.1-1 -y
+apt-get install filebeat=8.13.1 -y
+
+2. allow port 523 on your vm first
+
+to check firewall port: 
+ufw status
+
+add port 523 as udp and tcp:
+sudo ufw allow 523/tcp
+sudo ufw allow 523/udp
+
+3. Cp from KB syslog for filebeat
+
+nano /etc/filebeat/filebeat.yml
+
+edit these ->
+
+# ============================== Filebeat inputs ===============================
+
+filebeat.inputs:
+- type: udp
+  host: "0.0.0.0:523"
+  tags: ["give name"]
+
+# ---------------------------- Elasticsearch Output ----------------------------
+#output.elasticsearch:
+
+# ------------------------------ Logstash Output -------------------------------
+output.logstash:
+  # The Logstash hosts
+  hosts: ["localhost:5044"]
+
+  # Optional SSL. By default is off.
+  # List of root certificates for HTTPS server verifications
+  #ssl.certificate_authorities: ["/etc/pki/root/ca.pem"]
+  ssl.certificate_authorities: ["/etc/filebeat/elasticsearch-ca.pem"]
+  ssl.verification_mode: none
+
+  # Certificate for SSL client authentication
+  ssl.certificate: "/etc/filebeat/logstash-forwarder.crt"
+
+  # Client Certificate Key
+  ssl.key: "/etc/filebeat/logstash-forwarder.key"
+  # Certificate for SSL client authentication
+  #ssl.certificate: "/etc/pki/client/cert.pem"
+
+
+4. cp elasticsearch-ca.pem to home folder
+
+##first part of filebeat is to define the syslog listener
+##basically it listens to logs sent by whatever devices, for this case it's sangfor office firewall
+##2nd part is to configure filebeat to send the logs to logstash
+##by default, it is sending to elasticsearch, we don't want that
+
+in the command, got 3 important files
+/etc/filebeat/elasticsearch-ca.pem
+/etc/filebeat/logstash-forwarder.crt
+/etc/filebeat/logstash-forwarder.key
+
+5. next is to generate /etc/filebeat/logstash-forwarder.crt & /etc/filebeat/logstash-forwarder.key
+
+openssl req -subj '/CN='192.168.100.77'/' -x509 -days 3650 -batch -nodes -newkey rsa:4096 -keyout logstash-forwarder.key -out logstash-forwarder.crt
+
+6. change permissisons
+
+chmod 444 logstash-forwarder.*
+chmod 644 elasticsearch-ca.pem
+
+7.nano /etc/logstash/conf.d/elasticsearch.conf
+
+input {
+ beats {
+  port => 5044
+  ssl => true
+  ssl_certificate_authorities => ["/etc/logstash/elasticsearch-ca.pem"]
+  ssl_certificate => "/etc/filebeat/logstash-forwarder.crt"
+  ssl_key => "/etc/filebeat/logstash-forwarder.key"
+  ssl_verify_mode => "peer"
+ }
+}
+output {
+ if "(same name as tags in filebeat.yml)" in [tags] {
+  elasticsearch {
+  ssl => true
+  ssl_certificate_verification => false
+  cacert => "/etc/logstash/elasticsearch-ca.pem"
+  hosts => "https://(EBC/Production):9200"
+  user => "${LS_USER}"
+  password => "${LS_PWD}"
+  manage_template => true
+  index => "danial-test-%{+YYYY.MM.dd}"
+  #pipeline => "poj-zabbix-api-v2" *later change
+  ilm_rollover_alias => "(data view name)"
+  ilm_pattern => "000001"
+  ilm_policy => "filebeat"
+  }
+ }
+ else {
+  elasticsearch {
+  ssl => true
+  ssl_certificate_verification => false
+  cacert => "/etc/logstash/elasticsearch-ca.pem"
+  hosts => "https://(EBC/production)9200"
+  user => "${LS_USER}"
+  password => "${LS_PWD}"
+  manage_template => true
+  index => "other-logs-%{+YYYY.MM.dd}"
+  }
+ }
+}
+
+8. cp elasticsearch-ca.pem into logstash directory and change permissions
+
+cd /etc/logstash/
+cp /home/danial/elasticsearch-ca.pem .
+
+chmod 440 elasticsearch-ca.pem
+chown logstash:logstash elasticsearch-ca.pem
+
+9. restart filebeat and logstash
+
+systemctl restart logstash
+systemctl restart filebeat
+
+10.miscellenoius
+
+cd conf.d/
+chmod 644 elasticsearch.conf
+netstat -tulpn
+
+11.checkings
+
+filebeat:
+journalctl -fu filebeat
+
+logstash:
+
+tail -f /var/log/logstash/logstash-plain.log
+
+12.
+
+13.
