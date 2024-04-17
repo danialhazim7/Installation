@@ -62,9 +62,11 @@ in the command, got 3 important files
 /etc/filebeat/logstash-forwarder.crt
 /etc/filebeat/logstash-forwarder.key
 
-5. next is to generate /etc/filebeat/logstash-forwarder.crt & /etc/filebeat/logstash-forwarder.key
+5. next is to generate /etc/filebeat/logstash-forwarder.crt & /etc/filebeat/logstash-forwarder.key in /etc/filebeat
 
-openssl req -subj '/CN='192.168.100.77'/' -x509 -days 3650 -batch -nodes -newkey rsa:4096 -keyout logstash-forwarder.key -out logstash-forwarder.crt
+cd /etc/filebeat
+
+openssl req -subj '/CN='(vm ip)'/' -x509 -days 3650 -batch -nodes -newkey rsa:4096 -keyout logstash-forwarder.key -out logstash-forwarder.crt
 
 6. change permissisons
 
@@ -105,7 +107,7 @@ output {
   ssl => true
   ssl_certificate_verification => false
   cacert => "/etc/logstash/elasticsearch-ca.pem"
-  hosts => "https://(EBC/production)9200"
+  hosts => "https://(EBC/production):9200"
   user => "${LS_USER}"
   password => "${LS_PWD}"
   manage_template => true
@@ -121,6 +123,9 @@ cp /home/danial/elasticsearch-ca.pem .
 
 chmod 440 elasticsearch-ca.pem
 chown logstash:logstash elasticsearch-ca.pem
+
+#There should be 3 files in the folder filebeat(elasticsearch-ca.pem, logstash-forwarder.crt & logstash-forwarder.key)
+#The file elasticsearch-ca.pem should also be in the /etc/logstash folder
 
 9. restart filebeat and logstash
 
