@@ -24,7 +24,7 @@ def run_nmap(input_file, output_directory):
 
 def main():
     # Prompt user to enter the target domain
-    print=("=====================Step 1: Domain Scanning====================")
+    print("=====================Step 1: Domain Scanning====================")
     target_domain = input("Enter the target domain: ").strip()
 
     # Specify the base output directory
@@ -36,16 +36,16 @@ def main():
 
     # Run Sublist3r
 
-    print=("=====================Initializing Domain Scanning======================")
+    print("=====================Initializing Domain Scanning======================")
     run_sublist3r(target_domain, target_directory)
 
     # Run Nmap using the output from Sublist3r
     sublist3r_output = os.path.join(target_directory, f"{target_domain}.txt")
-    print=("=====================Domain Scanning Completed=======================")
-    print=("=====================Step 2: Open Ports Scanning====================")
+    print("=====================Domain Scanning Completed=======================")
+    print("=====================Step 2: Open Ports Scanning====================")
     run_nmap(sublist3r_output, target_directory)
-    print=("=====================Open Ports Scanning Completed====================")
-    print=("Target File is at:"+ target_directory)
+    print("=====================Open Ports Scanning Completed====================")
+    print("Target File is at:"+ target_directory)
 
 if __name__ == "__main__":
     main()
